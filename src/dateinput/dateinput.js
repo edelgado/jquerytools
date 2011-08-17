@@ -34,8 +34,8 @@
 			offset: [0, 0],
 			speed: 0,
 			firstDay: 0, // The first day of the week, Sun = 0, Mon = 1, ...
-			min: 0,
-			max: 0,
+			min: undefined,
+			max: undefined,
 			trigger: false,
 			
 			css: {
@@ -187,7 +187,10 @@
 			 max = input.attr("max") || conf.max,
 			 opened;
 
-		// make sure value, min & max has values		
+		// zero min is not undefined 	 
+		if (min === 0) { min = "0"; }
+		
+		// use sane values for value, min & max		
 		value = parseDate(value) || now;
 		min   = parseDate(min || conf.yearRange[0] * 365);
 		max   = parseDate(max || conf.yearRange[1] * 365);
@@ -199,7 +202,8 @@
 		// Replace built-in date input: NOTE: input.attr("type", "text") throws exception by the browser
 		if (input.attr("type") == 'date') {
 			var tmp = $("<input/>");
-			$.each("name,readonly,disabled,value,required".split(","), function(i, attr)  {
+				 
+			$.each("class,disabled,id,maxlength,name,readonly,required,size,style,tabindex,title,value".split(","), function(i, attr)  {
 				tmp.attr(attr, input.attr(attr));		
 			});			
 			input.replaceWith(tmp);
@@ -231,7 +235,7 @@
 			if (conf.selectors) {				
 				var monthSelector = $("<select/>").attr("id", css.month),
 					 yearSelector = $("<select/>").attr("id", css.year);				
-				title.append(monthSelector.add(yearSelector));
+				title.html(monthSelector.add(yearSelector));
 			}						
 			
 			// day titles
@@ -242,7 +246,7 @@
 				days.append($("<span/>").text(labels.shortDays[(d + conf.firstDay) % 7]));
 			}
 			
-			input.after(root);
+			$("body").append(root);
 		}	
 		
 				
@@ -299,6 +303,7 @@
 			
 			$(document).bind("keydown.d", function(e) {
 					
+				if (e.ctrlKey) { return true; }				
 				var key = e.keyCode;			 
 				
 				// backspace clears the value
@@ -363,11 +368,13 @@
 			
 			
 			// click outside dateinput
-			$(document).bind("click.d", function(e) {
+			$(document).bind("click.d", function(e) {					
 				var el = e.target;
-				if (!$(el).parents("#" + css.root).length && el != input[0] && (!trigger || el != trigger[0])) { 
-					self.hide(e); 
+				
+				if (!$(el).parents("#" + css.root).length && el != input[0] && (!trigger || el != trigger[0])) {
+					self.hide(e);
 				}
+				
 			}); 
 		}
 //}}}
@@ -379,7 +386,7 @@
 								
 			show: function(e) {
 				
-				if (input.is("[readonly]") || opened) { return; }
+				if (input.attr("readonly") || input.attr("disabled") || opened) { return; }
 				
 				// onBeforeShow
 				e = e || $.Event();
@@ -422,8 +429,13 @@
 				self.setValue(value);				 
 				
 				// show calendar
-				var pos = input.position();
+				var pos = input.offset();
 
+				// iPad position fix
+				if (/iPad/i.test(navigator.userAgent)) {
+					pos.top -= $(window).scrollTop();
+				}
+				
 				root.css({ 
 					top: pos.top + input.outerHeight({margins: true}) + conf.offset[0], 
 					left: pos.left + conf.offset[1] 
@@ -445,24 +457,17 @@
 
 //{{{  setValue
 
-			setValue: function(year, month, day)  {						
+			setValue: function(year, month, day)  {
 				
+				var date = integer(month) >= -1 ? new Date(integer(year), integer(month), integer(day || 1)) : 
+					year || value;				
 				
-				var date;
-
-				if (parseInt(month, 10) >= -1) {
-					// strings to numbers
-					year = integer(year);
-					month = integer(month);
-					day = integer(day);					
-					date = new Date(year, month, day);
-					
-				} else { 
-					date = year || value;	
-					year = date.getFullYear();
-					month = date.getMonth();
-					day = date.getDate();					
-				} 
+				if (date < min) { date = min; }
+				else if (date > max) { date = max; }
+				
+				year = date.getFullYear();
+				month = date.getMonth();
+				day = date.getDate(); 
 				
 				
 				// roll year & month
@@ -500,9 +505,11 @@
 					});
 					
 					// year selector
-					yearSelector.empty();					
-					for (var i = year + conf.yearRange[0];  i < year + conf.yearRange[1]; i++) {
-						if (min < new Date(i + 1, -1, 0) && max > new Date(i, 0, 0)) {
+					yearSelector.empty();		
+					var yearNow = now.getFullYear();
+					
+					for (var i = yearNow + conf.yearRange[0];  i < yearNow + conf.yearRange[1]; i++) {
+						if (min <= new Date(i + 1, -1, 1) && max > new Date(i, 0, 0)) {
 							yearSelector.append($("<option/>").text(i));
 						}
 					}		
@@ -517,9 +524,10 @@
 					 
 				// populate weeks
 				weeks.empty();				
-				pm.add(nm).removeClass(css.disabled);
+				pm.add(nm).removeClass(css.disabled); 
 				
-				for (var j = 0, a, num; j < 42; j++) { 
+				// !begin === "sunday"
+				for (var j = !begin ? -7 : 0, a, num; j < (!begin ? 35 : 42); j++) { 
 					
 					a = $("<a/>");
 					
@@ -564,18 +572,18 @@
 					a.attr("href", "#" + num).text(num).data("date", date);					
 					
 					week.append(a);
-					
-					// date picking					
-					a.click(function(e) {
-						var el = $(this); 
-						if (!el.hasClass(css.disabled)) {  
-							$("#" + css.current).removeAttr("id");
-							el.attr("id", css.current);	 
-							select(el.data("date"), conf, e);
-						}
-						return false;
-					});
 				}
+				
+				// date picking					
+				weeks.find("a").click(function(e) {
+					var el = $(this); 
+					if (!el.hasClass(css.disabled)) {  
+						$("#" + css.current).removeAttr("id");
+						el.attr("id", css.current);	 
+						select(el.data("date"), conf, e);
+					}
+					return false;
+				});
 
 				// sunday
 				if (css.sunday) {
@@ -622,14 +630,14 @@
 				if (opened) {  
 					
 					// onHide 
-					e = e || $.Event();
+					e = $.Event();
 					e.type = "onHide";
 					fire.trigger(e);
 					
-					$(document).unbind("click.d").unbind("keydown.d"); 
+					$(document).unbind("click.d").unbind("keydown.d");
 					
 					// cancelled ?
-					if (e.isDefaultPrevented()) { return; }    
+					if (e.isDefaultPrevented()) { return; }
 					
 					// do the hide
 					root.hide();
@@ -671,7 +679,7 @@
 			
 			// API methods				
 			self[name] = function(fn) {
-				$(self).bind(name, fn);
+				if (fn) { $(self).bind(name, fn); }
 				return self;
 			};
 		});
@@ -693,8 +701,7 @@
 			
 		}); 
 		
-		// initial value 
-		
+		// initial value 		
 		if (parseDate(input.val())) { 
 			select(value, conf);
 		}

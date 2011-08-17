@@ -177,7 +177,7 @@
 		// Replace built-in range input (type attribute cannot be changed)
 		if (input.attr("type") == 'range') {
 			var tmp = $("<input/>");
-			$.each("name,readonly,disabled,required".split(","), function(i, attr)  {
+			$.each("class,disabled,id,maxlength,name,readonly,required,size,style,tabindex,title,value".split(","), function(i, attr)  {
 				tmp.attr(attr, input.attr(attr));		
 			});
 			tmp.val(conf.value);
@@ -288,6 +288,7 @@
 			},
 			
 			setValue: function(val, e) {
+				init();
 				return slide(e || $.Event("api"), undefined, val, true); 
 			}, 			  
 			
@@ -335,7 +336,7 @@
 			
 			// API methods
 			self[name] = function(fn) {
-				$(self).bind(name, fn);
+				if (fn) { $(self).bind(name, fn); }
 				return self;	
 			};
 		}); 
@@ -344,11 +345,12 @@
 		// dragging		                                  
 		handle.drag({drag: false}).bind("dragStart", function() {
 		
-			/* do some pre- calculations for seek() function. improves performance */
+			/* do some pre- calculations for seek() function. improves performance */			
+			init();
 			
 			// avoid redundant event triggering (= heavy stuff)
 			fireOnSlide = hasEvent($(self)) || hasEvent(input);
-
+			
 				
 		}).bind("drag", function(e, y, x) {        
 			
@@ -370,8 +372,7 @@
 			if (input.is(":disabled") || e.target == handle[0]) { 
 				return e.preventDefault(); 
 			}				  
-			
-			init();  
+			init(); 
 			var fix = handle.width() / 2;   
 			slide(e, vertical ? len-origo-fix + e.pageY  : e.pageX -origo -fix);  
 		});
@@ -430,7 +431,7 @@
 		
 		function begin() {
 			init();	
-			self.setValue(conf.value || conf.min);
+			self.setValue(conf.value !== undefined ? conf.value : conf.min);
 		} 
 		begin();
 		

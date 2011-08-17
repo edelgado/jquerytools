@@ -45,7 +45,7 @@
 	// simple extend
 	function extend(to, from) {
 		if (from) {
-			for (key in from) {
+			for (var key in from) {
 				if (from.hasOwnProperty(key)) {
 					to[key] = from[key];
 				}
@@ -88,17 +88,21 @@
 		conf: GLOBAL_OPTS,
 	
 		getVersion: function()  {
-			var ver;
+			var fo, ver;
 			
 			try {
 				ver = navigator.plugins["Shockwave Flash"].description.slice(16); 
 			} catch(e) {
 				
 				try  {
-					var fo = new ActiveXObject("ShockwaveFlash.ShockwaveFlash.7");
-					ver = fo && fo.GetVariable("$version");	 
+					fo = new ActiveXObject("ShockwaveFlash.ShockwaveFlash.7");
+					ver = fo && fo.GetVariable("$version");
+					
 				} catch(err) {
-						
+                try  {
+                    fo = new ActiveXObject("ShockwaveFlash.ShockwaveFlash.6");
+                    ver = fo && fo.GetVariable("$version");  
+                } catch(err2) { } 						
 				} 
 			}
 			

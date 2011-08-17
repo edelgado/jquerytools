@@ -31,6 +31,7 @@
 			prev: '.prev', 
 			speed: 400,
 			vertical: false,
+			touch: true,
 			wheelSpeed: 0
 		} 
 	};
@@ -91,7 +92,7 @@
 			},
 			
 			getItems: function() {
-				return itemWrap.children(conf.item).not("." + conf.clonedClass);	
+				return itemWrap.find(conf.item).not("." + conf.clonedClass);	
 			},
 							
 			move: function(offset, time) {
@@ -125,8 +126,8 @@
 				if (!conf.circular)  {
 					itemWrap.append(item);
 				} else {
-					$(".cloned:last").before(item);
-					$(".cloned:first").replaceWith(item.clone().addClass(conf.clonedClass)); 						
+					itemWrap.children("." + conf.clonedClass + ":last").before(item);
+					itemWrap.children("." + conf.clonedClass + ":first").replaceWith(item.clone().addClass(conf.clonedClass)); 						
 				}
 				
 				fire.trigger("onAddItem", [item]);
@@ -137,16 +138,20 @@
 			/* all seeking functions depend on this */		
 			seekTo: function(i, time, fn) {	
 				
+				// ensure numeric index
+				if (!i.jquery) { i *= 1; }
+				
 				// avoid seeking from end clone to the beginning
 				if (conf.circular && i === 0 && index == -1 && time !== 0) { return self; }
 				
-				// check that index is sane
+				// check that index is sane				
 				if (!conf.circular && i < 0 || i > self.getSize() || i < -1) { return self; }
 				
 				var item = i;
 			
 				if (i.jquery) {
 					i = self.getItems().index(i);	
+					
 				} else {
 					item = self.getItems().eq(i);
 				}  
@@ -182,7 +187,7 @@
 			}
 			
 			self[name] = function(fn) {
-				$(self).bind(name, fn);
+				if (fn) { $(self).bind(name, fn); }
 				return self;
 			};
 		});  
@@ -219,7 +224,7 @@
 			});
 			
 			// seek over the cloned item
-			self.seekTo(0, 0);
+			self.seekTo(0, 0, function() {});
 		}
 		
 		// next/prev buttons
@@ -236,6 +241,10 @@
 					}
 				}, 1);
 			}); 
+			
+			if (!conf.initialIndex) {
+				prev.addClass(conf.disabledClass);	
+			}
 		}
 			
 		// mousewheel support
@@ -246,6 +255,30 @@
 					return false;
 				}
 			});			
+		}
+		
+		// touch event
+		if (conf.touch) {
+			var touch = {};
+			
+			itemWrap[0].ontouchstart = function(e) {
+				var t = e.touches[0];
+				touch.x = t.clientX;
+				touch.y = t.clientY;
+			};
+			
+			itemWrap[0].ontouchmove = function(e) {
+				
+				// only deal with one finger
+				if (e.touches.length == 1 && !itemWrap.is(":animated")) {			
+					var t = e.touches[0],
+						 deltaX = touch.x - t.clientX,
+						 deltaY = touch.y - t.clientY;
+	
+					self[vertical && deltaY > 0 || !vertical && deltaX > 0 ? 'next' : 'prev']();				
+					e.preventDefault();
+				}
+			};
 		}
 		
 		if (conf.keyboard)  {
@@ -274,7 +307,9 @@
 		}
 		
 		// initial index
-		$(self).trigger("onBeforeSeek", [conf.initialIndex]);
+		if (conf.initialIndex) {
+			self.seekTo(conf.initialIndex, 0, function() {});
+		}
 	} 
 
 		

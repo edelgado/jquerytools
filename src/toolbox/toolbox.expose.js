@@ -156,6 +156,7 @@
 			mask.css({display: 'block'}).fadeTo(conf.loadSpeed, conf.opacity, function() {
 				$.mask.fit(); 
 				call(conf.onLoad);
+				loaded = "full";
 			});
 			
 			loaded = true;			
@@ -171,16 +172,15 @@
 				mask.fadeOut(config.closeSpeed, function()  {					
 					call(config.onClose);					
 					if (exposed) {
-						exposed.css({zIndex: overlayIndex});
+						exposed.css({zIndex: overlayIndex});						
 					}				
+					loaded = false;
 				});				
 				
 				// unbind various event listeners
 				$(document).unbind("keydown.mask");
 				mask.unbind("click.mask");
-				$(window).unbind("resize.mask");
-	
-				loaded = false;
+				$(window).unbind("resize.mask");  
 			}
 			
 			return this; 
@@ -197,8 +197,8 @@
 			return mask;	
 		},
 		
-		isLoaded: function() {
-			return loaded;	
+		isLoaded: function(fully) {
+			return fully ? loaded == 'full' : loaded;	
 		}, 
 		
 		getConf: function() {

@@ -44,7 +44,8 @@
 			 trigger = this.getTrigger(),
 			 self = this,
 			 oWidth = overlay.outerWidth({margin:true}),
-			 img = overlay.data("img");  
+			 img = overlay.data("img"),
+			 position = conf.fixed ? 'fixed' : 'absolute';  
 		
 		
 		// growing image is required.
@@ -74,6 +75,15 @@
 			itop = p.top;
 			ileft = p.left;
 		} 
+		
+		// put overlay into final position
+		if (conf.fixed) {
+			itop -= w.scrollTop();
+			ileft -= w.scrollLeft();
+		} else {
+			pos.top += w.scrollTop();
+			pos.left += w.scrollLeft();				
+		}
 			
 		// initialize background image and make it visible
 		img.css({
@@ -83,26 +93,15 @@
 			width: 0,
 			zIndex: conf.zIndex
 		}).show();
-
 		
-		// put overlay into final position
-		pos.top += w.scrollTop();
-		pos.left += w.scrollLeft();		
-		pos.position = 'absolute';
+		pos.position = position;
 		overlay.css(pos);
 		
 		// begin growing
-		img.animate({
+		img.animate({			
 			top: overlay.css("top"), 
 			left: overlay.css("left"), 
-			width: oWidth}, conf.speed, function() { 
-
-			if (conf.fixed) {
-				pos.top -= w.scrollTop();
-				pos.left -= w.scrollLeft();
-				pos.position = 'fixed';
-				img.add(overlay).css(pos);
-			}
+			width: oWidth}, conf.speed, function() {
 			
 			// set close button and content over the image
 			overlay.css("zIndex", conf.zIndex + 1).fadeIn(conf.fadeInSpeed, function()  { 
@@ -113,7 +112,8 @@
 					overlay.hide();	
 				} 
 			});
-		});
+			
+		}).css("position", position);
 		
 	};
 //}}}

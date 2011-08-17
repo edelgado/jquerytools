@@ -47,15 +47,35 @@ body {
 
 	<h3>Title attribute</h3>
 	
-	<a class="trigger" title="Tooltip #1 in title">trigger 1</a>
-	<a class="trigger" title="Tooltip #2 in title">trigger 2</a>
-	<a class="trigger" title="Tooltip #3 in title">trigger 3</a>
+	<a class="trigger" title="Tooltip #1 in title & more">trigger 1</a>
+	<a class="trigger" title="Tooltip #2 in title & more">trigger 2</a>
+	<a class="trigger" title="Tooltip #3 in title & more">trigger 3</a>
 
 	<script>
 		$("#titled a").tooltip({ 
 			delay: 300, 
 			predelay: 0,
 			effect: 'fade'
+		});
+	</script>
+	
+</div>
+
+<div id="attr" class="test">
+
+	<h3>Data-tooltip attribute</h3>
+	
+	<a class="trigger" data-tooltip="#attr .tooltip">trigger 1</a> 
+	<a class="trigger" data-tooltip="#attr .tooltip">trigger 2</a>
+	<a class="trigger">trigger 3</a>
+
+	<span></span>
+	
+	<div><div class="tooltip">Manual #3</div></div>
+	
+	<script>
+		$("#attr a").tooltip({ 
+			
 		});
 	</script>
 	
@@ -88,9 +108,9 @@ body {
 
 	<h3>Same tip element</h3>
 	
-	<a class="trigger">trigger 1</a>
-	<a class="trigger">trigger 2</a>
-	<a class="trigger">trigger 3</a>
+	<a class="trigger" title="you can now use different tip">trigger 1</a>
+	<a class="trigger" title="you can now truly use different tip">trigger 2</a>
+	<a class="trigger" title="different tip again">trigger 3</a>
 	
 	<div id="sametip" class="tooltip">
 		The same tooltip for multiple triggers
@@ -130,7 +150,7 @@ body {
 	<a class="trigger" title="This is the title">trigger 3</a>
 
 	<script>
-		$("#slide a").tooltip({ effect: 'fade', opacity: 0.5 });
+		$("#slide a").tooltip({ effect: 'slide', opacity: 0.7 });
 	</script>
 	
 </div>

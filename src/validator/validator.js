@@ -17,10 +17,11 @@
 	// globals
 	var typeRe = /\[type=([a-z]+)\]/, 
 		numRe = /^-?[0-9]*(\.[0-9]+)?$/,
+		dateInput = $.tools.dateinput,
 		
 		// http://net.tutsplus.com/tutorials/other/8-regular-expressions-you-should-know/
 		emailRe = /^([a-z0-9_\.\-\+]+)@([\da-z\.\-]+)\.([a-z\.]{2,6})$/i,
-		urlRe = /^(https?:\/\/)?([\da-z\.\-]+)\.([a-z\.]{2,6})([\/\w \.\-]*)*\/?$/i,
+		urlRe = /^(https?:\/\/)?[\da-z\.\-]+\.[a-z\.]{2,6}[#&+_\?\/\w \.\-=]*$/i,
 		v;
 		 
 	v = $.tools.validator = {
@@ -106,6 +107,12 @@
 		top  -= el.outerHeight() - conf.offset[0];
 		left += trigger.outerWidth() + conf.offset[1];
 		
+		
+		// iPad position fix
+		if (/iPad/i.test(navigator.userAgent)) {
+			top -= $(window).scrollTop();
+		}
+		
 		// adjust Y		
 		var height = el.outerHeight() + trigger.outerHeight();
 		if (y == 'center') 	{ top += height / 2; }
@@ -157,17 +164,17 @@
 					}  
 					
 					// clear the container 
-					msg.css({visibility: 'hidden'}).find("span").remove();
+					msg.css({visibility: 'hidden'}).find("p").remove();
 					
 					// populate messages
 					$.each(err.messages, function(i, m) { 
-						$("<span/>").html(m).appendTo(msg);			
+						$("<p/>").html(m).appendTo(msg);			
 					});
 					
-					// make sure the width is sane (not the body's width)
+					// make sure the width is not full body width so it can be positioned correctly
 					if (msg.outerWidth() == msg.parent().width()) {
 						msg.add(msg.find("p")).css({display: 'inline'});		
-					}
+					} 
 					
 					// insert into correct position (relative to the field)
 					var pos = getPosition(input, msg, conf); 
@@ -223,24 +230,24 @@
 	
 	v.fn("[max]", "Please enter a value smaller than $1", function(el, v) {
 			
-		// skip dateinputs
-		if ($.tools.dateinput && el.is(":date")) { return true; }
+		// skip empty values and dateinputs
+		if (v === '' || dateInput && el.is(":date")) { return true; }	
 		
 		var max = el.attr("max");
 		return parseFloat(v) <= parseFloat(max) ? true : [max];
 	});
 	
 	v.fn("[min]", "Please enter a value larger than $1", function(el, v) {
-			
-		// skip dateinputs
-		if ($.tools.dateinput && el.is(":date")) { return true; }
-		
+
+		// skip empty values and dateinputs
+		if (v === '' || dateInput && el.is(":date")) { return true; }
+
 		var min = el.attr("min");
 		return parseFloat(v) >= parseFloat(min) ? true : [min];
 	});
 	
 	v.fn("[required]", "Please complete this mandatory field.", function(el, v) {
-		if (el.is(":checkbox"))  { return el.is(":checked"); }
+		if (el.is(":checkbox")) { return el.is(":checked"); }
 		return !!v; 			
 	});
 	
@@ -306,6 +313,19 @@
 				return inputs;	
 			},		
 			
+			reflow: function() {
+				inputs.each(function()  {
+					var input = $(this),
+						 msg = input.data("msg.el");
+						 
+					if (msg) {						
+						var pos = getPosition(input, msg, conf);
+						msg.css({ top: pos.top, left: pos.left });
+					}
+				});
+				return self;
+			},
+			
 			/* @param e - for internal use only */
 			invalidate: function(errs, e) {
 				
@@ -313,7 +333,7 @@
 				if (!e) {
 					var errors = [];
 					$.each(errs, function(key, val) {
-						var input = inputs.filter("[name=" + key + "]");
+						var input = inputs.filter("[name='" + key + "']");
 						if (input.length) {
 							
 							// trigger HTML5 ininvalid event
@@ -352,8 +372,8 @@
 			},
 			
 			destroy: function() { 
-				form.unbind(conf.formEvent).unbind("reset.V"); 
-				inputs.unbind(conf.inputEvent || '').unbind("change.V");
+				form.unbind(conf.formEvent + ".V").unbind("reset.V"); 
+				inputs.unbind(conf.inputEvent + ".V").unbind("change.V");
 				return self.reset();	
 			}, 
 			
@@ -374,15 +394,20 @@
 				fire.trigger(e, [els]);				
 				if (e.isDefaultPrevented()) { return e.result; }				
 					
-				var errs = [], 
-					 event = conf.errorInputEvent + ".v";
+				// container for errors
+				var errs = [];
  
 				// loop trough the inputs
-				els.each(function() {
+				els.not(":radio:not(:checked)").each(function() {
 						
 					// field and it's error message container						
 					var msgs = [], 
-						 el = $(this).unbind(event).data("messages", msgs);					
+						 el = $(this).data("messages", msgs),
+						 event = dateInput && el.is(":date") ? "onHide.v" : conf.errorInputEvent + ".v";					
+					
+					// cleanup previous validation event
+					el.unbind(event);
+					
 					
 					// loop all validator functions
 					$.each(fns, function() {
@@ -423,7 +448,7 @@
 						el.trigger("OI", [msgs]);
 						
 						// begin validating upon error event type (such as keyup) 
-						if (conf.errorInputEvent) {
+						if (conf.errorInputEvent) {							
 							el.bind(event, function(e) {
 								self.checkValidity(el, e);		
 							});							
@@ -445,7 +470,7 @@
 					return false;
 					
 				// no errors
-				} else {		
+				} else {
 					
 					// call the effect
 					eff[1].call(self, els, e);
@@ -454,7 +479,7 @@
 					e.type = "onSuccess";					
 					fire.trigger(e, [els]);
 					
-					els.unbind(event);
+					els.unbind(conf.errorInputEvent + ".v");
 				}
 				
 				return true;				
@@ -473,7 +498,7 @@
 			
 			// API methods				
 			self[name] = function(fn) {
-				$(self).bind(name, fn);
+				if (fn) { $(self).bind(name, fn); }
 				return self;
 			};
 		});	
@@ -481,7 +506,7 @@
 		
 		// form validation
 		if (conf.formEvent) {
-			form.bind(conf.formEvent, function(e) {
+			form.bind(conf.formEvent + ".V", function(e) {
 				if (!self.checkValidity(null, e)) { 
 					return e.preventDefault(); 
 				}
@@ -509,18 +534,27 @@
 		
 		// input validation               
 		if (conf.inputEvent) {
-			inputs.bind(conf.inputEvent, function(e) {
+			inputs.bind(conf.inputEvent + ".V", function(e) {
 				self.checkValidity($(this), e);
 			});	
 		} 
 	
+		// checkboxes, selects and radios are checked separately
 		inputs.filter(":checkbox, select").filter("[required]").bind("change.V", function(e) {
 			var el = $(this);
 			if (this.checked || (el.is("select") && $(this).val())) {
 				effects[conf.effect][1].call(self, el, e); 
 			}
+		});		
+		
+		var radios = inputs.filter(":radio").change(function(e) {
+			self.checkValidity(radios, e);
 		});
 		
+		// reposition tooltips when window is resized
+		$(window).resize(function() {
+			self.reflow();		
+		});
 	}
 
 	
